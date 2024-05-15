@@ -1,0 +1,23 @@
+# air.toml
+
+# Config file for `air` tool
+root = "."  # Project root directory
+
+[build]
+  bin = "./main"  # Output binary file name (change this if your main file has a different name)
+  command = "go build -o main"  # Build command
+
+[watcher]
+  paths = ["."]
+
+[[watcher.extensions]]
+  # Watch for changes in .go files
+  dir = "."  # Watch the entire project directory
+  exts = ["go"]  # Watch for changes in Go source files
+  recursive = true
+
+# Hot reload options
+[hotreload]
+  command = "./main"  # Command to run after build
+  delay = 1000  # Delay (in milliseconds) before restarting the server after rebuild
+  stdout = false  # Disable stdout for the hot reload command
