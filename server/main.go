@@ -134,9 +134,9 @@ func main() {
     http.HandleFunc("/joinroom", enableCors(joinRoomHandler))
     http.HandleFunc("/ws", wsHandler(signalingServer)) // Use custom WebSocket handler
 
-    // Start the HTTP server
-    fmt.Println("Server is running on http://localhost:8080")
-    log.Fatal(http.ListenAndServe(":8080", nil))
+port := ":" + os.Getenv("PORT")
+fmt.Printf("Server is running on http://localhost%s\n", port)
+log.Fatal(http.ListenAndServe(port, nil))
 }
 
 // WebSocket handler function
