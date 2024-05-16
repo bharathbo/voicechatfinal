@@ -23,6 +23,7 @@ type User struct {
     Password string `json:"password,omitempty"`
 }
 
+
 // JWT claims struct
 type Claims struct {
     Email string `json:"email"`
@@ -97,16 +98,21 @@ func (s *SignalingServer) HandleWebSocket(w http.ResponseWriter, r *http.Request
 func main() {
     // Database connection string
     const (
-        host     = "localhost"
-        port     = 5432
-        user     = "postgres"
-        password = "Raj@1810"
-        dbname   = "voice-chat"
+	    "Name": "CONNECTION_NAME",
+            "Group": "GROUP_TEST",
+            "Host": "pg-2eec7806-manasa-dd8a.a.aivencloud.com",
+            "Port": 22683,
+            "MaintenanceDB": "voice-chat",
+            "Username": "avnadmin",
+            "SSLMode": "require"
+	    "password":"AVNS_Vz0nNkXvfi5IWu8jjhd"
+             dbname   = "voice-chat"
     )
 
+
     // Construct connection string
-    psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-        host, port, user, password, dbname)
+    psqlInfo := fmt.Sprintf("Name=%s "Group":%s Host=%s port=%d Username=%s Password=%s MaintenanceDB=%s dbname=%s SSLMODE=%s",
+        Name,Group,Host,Port,Username,Password,MaintenanceDB,SSLMODE)
 
     // Connect to the PostgreSQL database
     var err error
