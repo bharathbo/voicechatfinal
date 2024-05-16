@@ -8,7 +8,7 @@ import (
     "net/http"
     "sync"
 
-    "github.com/dgrijalva/jwt-go"
+    "github.com/golang-jwt/jwt/v4"
     "github.com/gorilla/websocket"
     "github.com/pion/webrtc/v3"
     "golang.org/x/crypto/bcrypt"
@@ -18,11 +18,10 @@ import (
 // User struct for JSON request and response
 type User struct {
     ID       int    `json:"id"`
-    email    string `json:"email"`
-    name     string `json:"name"`
-    password string `json:"password,omitempty"`
+    Email    string `json:"email"`
+    Name     string `json:"name"`
+    Password string `json:"password,omitempty"`
 }
-
 
 // JWT claims struct
 type Claims struct {
@@ -98,21 +97,17 @@ func (s *SignalingServer) HandleWebSocket(w http.ResponseWriter, r *http.Request
 func main() {
     // Database connection string
     const (
-	    "Name": "CONNECTION_NAME",
-            "Group": "GROUP_TEST",
-            "Host": "pg-2eec7806-manasa-dd8a.a.aivencloud.com",
-            "Port": 22683,
-            "MaintenanceDB": "voice-chat",
-            "Username": "avnadmin",
-            "SSLMode": "require",
-	    "password":"AVNS_Vz0nNkXvfi5IWu8jjhd",
-           "dbname"   : "voice-chat",
+        Host     = "pg-2eec7806-manasa-dd8a.a.aivencloud.com"
+        Port     = 22683
+        User     = "avnadmin"
+        Password = "AVNS_Vz0nNkXvfi5IWu8jjhd"
+        Dbname   = "voice-chat"
+        SSLMode  = "require"
     )
 
-
     // Construct connection string
-    psqlInfo := fmt.Sprintf(name=%s Group:%s Host=%s port=%d Username=%s Password=%s MaintenanceDB=%s dbname=%s SSLMODE=%s",
-        Name,Group,Host,Port,Username,Password,MaintenanceDB,SSLMODE)
+    psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+        Host, Port, User, Password, Dbname, SSLMode)
 
     // Connect to the PostgreSQL database
     var err error
@@ -163,7 +158,6 @@ func wsHandler(signalingServer *SignalingServer) http.HandlerFunc {
     }
 }
 
-
 // Middleware function to enable CORS (Cross-Origin Resource Sharing)
 func enableCors(handler http.HandlerFunc) http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
@@ -199,7 +193,7 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
     // Process each row of the result set
     for rows.Next() {
         var u User
-        if err := rows.Scan(&u.ID, &u.email, &u.name); err != nil {
+        if err := rows.Scan(&u.ID, &u.Email, &u.Name); err != nil {
             http.Error(w, "Database error", http.StatusInternalServerError)
             return
         }
@@ -238,112 +232,111 @@ func createUserHandler(w http.ResponseWriter, r *http.Request) {
     // Insert new user record into the database
     _, err = db.Exec("INSERT INTO users (email, name, password) VALUES ($1, $2, $3)",
         newUser.Email, newUser.Name, newUser.Password)
-   
-if err != nil {
-    http.Error(w, "Failed to insert user",
-	http.StatusInternalServerError)
-    return
-}
 
-// Generate and send JWT token containing user's email
-token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{Email: newUser.Email})
-signedToken, err := token.SignedString([]byte("secret"))
-if err != nil {
-    http.Error(w, "Failed to generate JWT token", http.StatusInternalServerError)
-    return
-}
+    if err != nil {
+        http.Error(w, "Failed to insert user", http.StatusInternalServerError)
+        return
+    }
 
-// Respond with success message and JWT token
-response := map[string]string{
-    "message": "User created successfully",
-    "token":   signedToken,
-}
-w.WriteHeader(http.StatusCreated)
-w.Header().Set("Content-Type", "application/json")
-json.NewEncoder(w).Encode(response)
+    // Generate and send JWT token containing user's email
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{Email: newUser.Email})
+    signedToken, err := token.SignedString([]byte("secret"))
+    if err != nil {
+        http.Error(w, "Failed to generate JWT token", http.StatusInternalServerError)
+        return
+    }
+
+    // Respond with success message and JWT token
+    response := map[string]string{
+        "message": "User created successfully",
+        "token":   signedToken,
+    }
+    w.WriteHeader(http.StatusCreated)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
 
 // Handler for POST /login to authenticate user
 func loginHandler(w http.ResponseWriter, r *http.Request) {
-// Parse JSON request body into User struct
-var loginUser User
-err := json.NewDecoder(r.Body).Decode(&loginUser)
-if err != nil {
-    http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
-    return
-}
+    // Parse JSON request body into User struct
+    var loginUser User
+    err := json.NewDecoder(r.Body).Decode(&loginUser)
+    if err != nil {
+        http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+        return
+    }
 
-// Retrieve hashed password from the database based on provided email
-var hashedPassword string
-err = db.QueryRow("SELECT password FROM users WHERE email = $1", loginUser.Email).Scan(&hashedPassword)
-if err != nil {
-    http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-    return
-}
+    // Retrieve hashed password from the database based on provided email
+    var hashedPassword string
+    err = db.QueryRow("SELECT password FROM users WHERE email = $1", loginUser.Email).Scan(&hashedPassword)
+    if err != nil {
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+        return
+    }
 
-// Compare provided password with hashed password from the database
-if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(loginUser.Password)); err != nil {
-    http.Error(w, "Invalid credentials", http.StatusUnauthorized)
-    return
-}
+    // Compare provided password with hashed password from the database
+    if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(loginUser.Password)); err != nil {
+        http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+        return
+    }
 
-// Generate JWT token containing user's email
-token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{Email: loginUser.Email})
-signedToken, err := token.SignedString([]byte("secret"))
-if err != nil {
-    http.Error(w, "Failed to generate JWT token", http.StatusInternalServerError)
-    return
-}
+    // Generate JWT token containing user's email
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{Email: loginUser.Email})
+    signedToken, err := token.SignedString([]byte("secret"))
+    if err != nil {
+        http.Error(w, "Failed to generate JWT token", http.StatusInternalServerError)
+        return
+    }
 
-// Respond with success message and JWT token
-response := map[string]string{
-    "message": "Login successful",
-    "token":   signedToken,
-}
-w.WriteHeader(http.StatusOK)
-w.Header().Set("Content-Type", "application/json")
-json.NewEncoder(w).Encode(response)
+    // Respond with success message and JWT token
+    response := map[string]string{
+        "message": "Login successful",
+        "token":   signedToken,
+    }
+    w.WriteHeader(http.StatusOK)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
 
 // Handler for POST /joinroom to join a meeting room
 func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
-// Parse JSON request body into JoinRoomRequest struct
-var joinRequest JoinRoomRequest
-err := json.NewDecoder(r.Body).Decode(&joinRequest)
-if err != nil {
-    http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
-    return
-}
+    // Parse JSON request body into JoinRoomRequest struct
+    var joinRequest JoinRoomRequest
+    err := json.NewDecoder(r.Body).Decode(&joinRequest)
+    if err != nil {
+        http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
+        return
+    }
 
-// Extract email from token
-tokenString := joinRequest.Token // Token included in JSON payload
-token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-    return []byte("secret"), nil // Use the same secret key used for token generation
-})
-if err != nil {
-    http.Error(w, "Invalid token", http.StatusUnauthorized)
-    return
-}
+    // Extract email from token
+    tokenString := joinRequest.Token // Token included in JSON payload
+    token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte("secret"), nil // Use the same secret key used for token generation
+    })
+    if err != nil {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
 
-claims, ok := token.Claims.(*Claims)
-if !ok || !token.Valid {
-    http.Error(w, "Invalid token", http.StatusUnauthorized)
-    return
-}
-email := claims.Email // Extract email from claims
+    claims, ok := token.Claims.(*Claims)
+    if !ok || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+    email := claims.Email // Extract email from claims
 
-// Insert email and meeting ID into the database
-_, err = db.Exec("INSERT INTO meetings (email, meeting_id) VALUES ($1, $2)", email, joinRequest.MeetingID)
-if err != nil {
-    http.Error(w, "Failed to join meeting room", http.StatusInternalServerError)
-    return
-}
+    // Insert email and meeting ID into the database
+    _, err = db.Exec("INSERT INTO meetings (email, meeting_id) VALUES ($1, $2)", email, joinRequest.MeetingID)
+    if err != nil {
+        http.Error(w, "Failed to join meeting room", http.StatusInternalServerError)
+        return
+    }
 
-// Respond with success message
-response := map[string]string{
-    "message": "Joined meeting room successfully",
-}
-w.WriteHeader(http.StatusOK)
-w.Header().Set("Content-Type", "application/json")
-json.NewEncoder(w).Encode(response)
+    // Respond with success message
+    response := map[string]string{
+        "message": "Joined meeting room successfully",
+    }
+    w.WriteHeader(http.StatusOK)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
 }
