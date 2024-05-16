@@ -137,6 +137,7 @@ func main() {
     // Start the HTTP server
     fmt.Println("Server is running on http://localhost:8080")
     log.Fatal(http.ListenAndServe(":8080", nil))
+}
 
 // WebSocket handler function
 func wsHandler(signalingServer *SignalingServer) http.HandlerFunc {
@@ -277,14 +278,13 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    // Compare hashed password with the provided password
-    err = bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(loginUser.Password))
-    if err != nil {
+    // Compare provided password with hashed password from the database
+    if err := bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(loginUser.Password)); err != nil {
         http.Error(w, "Invalid email or password", http.StatusUnauthorized)
         return
     }
 
-    // Generate and send JWT token containing user's email
+    // Generate JWT token containing user's email
     token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{Email: dbUser.Email})
     signedToken, err := token.SignedString([]byte("secret"))
     if err != nil {
@@ -297,42 +297,50 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
         "message": "Login successful",
         "token":   signedToken,
     }
+    w.WriteHeader(http.StatusOK)
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
 
-// Handler for POST /joinroom to join a WebRTC room
+// Handler for POST /joinroom to join a meeting room
 func joinRoomHandler(w http.ResponseWriter, r *http.Request) {
-    // Parse JSON request body
-    var joinReq JoinRoomRequest
-    err := json.NewDecoder(r.Body).Decode(&joinReq)
+    // Parse JSON request body into JoinRoomRequest struct
+    var joinRequest JoinRoomRequest
+    err := json.NewDecoder(r.Body).Decode(&joinRequest)
     if err != nil {
         http.Error(w, "Invalid JSON payload", http.StatusBadRequest)
         return
     }
 
-    // Parse and validate JWT token
-    token, err := jwt.ParseWithClaims(joinReq.Token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-        return []byte("secret"), nil
+    // Extract email from token
+    tokenString := joinRequest.Token // Token included in JSON payload
+    token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+        return []byte("secret"), nil // Use the same secret key used for token generation
     })
-    if err != nil || !token.Valid {
-        http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
+    if err != nil {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
         return
     }
 
-    // Retrieve claims from token
     claims, ok := token.Claims.(*Claims)
-    if !ok {
-        http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+    if !ok || !token.Valid {
+        http.Error(w, "Invalid token", http.StatusUnauthorized)
+        return
+    }
+    email := claims.Email // Extract email from claims
+
+    // Insert email and meeting ID into the database
+    _, err = db.Exec("INSERT INTO meetings (email, meeting_id) VALUES ($1, $2)", email, joinRequest.MeetingID)
+    if err != nil {
+        http.Error(w, "Failed to join meeting room", http.StatusInternalServerError)
         return
     }
 
-    // Respond with success message and meeting details
+    // Respond with success message
     response := map[string]string{
-        "message":   "Join room successful",
-        "email":     claims.Email,
-        "meetingId": joinReq.MeetingID,
+        "message": "Joined meeting room successfully",
     }
+    w.WriteHeader(http.StatusOK)
     w.Header().Set("Content-Type", "application/json")
     json.NewEncoder(w).Encode(response)
 }
