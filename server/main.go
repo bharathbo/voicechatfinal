@@ -18,9 +18,9 @@ import (
 // User struct for JSON request and response
 type User struct {
     ID       int    `json:"id"`
-    Email    string `json:"email"`
-    Name     string `json:"name"`
-    Password string `json:"password,omitempty"`
+    email    string `json:"email"`
+    name     string `json:"name"`
+    password string `json:"password,omitempty"`
 }
 
 
@@ -98,7 +98,7 @@ func (s *SignalingServer) HandleWebSocket(w http.ResponseWriter, r *http.Request
 func main() {
     // Database connection string
     const (
-	    "Name": "CONNECTION_NAME",
+	    "name": "CONNECTION_NAME",
             "Group": "GROUP_TEST",
             "Host": "pg-2eec7806-manasa-dd8a.a.aivencloud.com",
             "Port": 22683,
@@ -111,8 +111,8 @@ func main() {
 
 
     // Construct connection string
-    psqlInfo := fmt.Sprintf("Name=%s "Group":%s Host=%s port=%d Username=%s Password=%s MaintenanceDB=%s dbname=%s SSLMODE=%s",
-        Name,Group,Host,Port,Username,Password,MaintenanceDB,SSLMODE)
+    psqlInfo := fmt.Sprintf("name=%s "Group":%s Host=%s port=%d Username=%s Password=%s MaintenanceDB=%s dbname=%s SSLMODE=%s",
+        name,Group,Host,Port,Username,Password,MaintenanceDB,SSLMODE)
 
     // Connect to the PostgreSQL database
     var err error
@@ -199,7 +199,7 @@ func usersHandler(w http.ResponseWriter, r *http.Request) {
     // Process each row of the result set
     for rows.Next() {
         var u User
-        if err := rows.Scan(&u.ID, &u.Email, &u.Name); err != nil {
+        if err := rows.Scan(&u.ID, &u.email, &u.name); err != nil {
             http.Error(w, "Database error", http.StatusInternalServerError)
             return
         }
