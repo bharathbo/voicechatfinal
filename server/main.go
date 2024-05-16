@@ -5,6 +5,7 @@ import (
     "encoding/json"
     "fmt"
     "log"
+    "os"
     "net/http"
     "sync"
 
@@ -134,9 +135,15 @@ func main() {
     http.HandleFunc("/joinroom", enableCors(joinRoomHandler))
     http.HandleFunc("/ws", wsHandler(signalingServer)) // Use custom WebSocket handler
 
-port := ":" + os.Getenv("PORT")
-fmt.Printf("Server is running on http://localhost%s\n", port)
-log.Fatal(http.ListenAndServe(port, nil))
+	// Determine the port for the HTTP server
+	port := ":" + os.Getenv("PORT")
+	if port == ":" {
+		port = ":8080" // Default to port 8080 if PORT environment variable is not set
+	}
+
+	// Start the HTTP server
+	fmt.Printf("Server is running on http://localhost%s\n", port)
+	log.Fatal(http.ListenAndServe(port, nil))
 }
 
 // WebSocket handler function
