@@ -98,15 +98,15 @@ func (s *SignalingServer) HandleWebSocket(w http.ResponseWriter, r *http.Request
 func main() {
     // Database connection string
     const (
-	    Name: "CONNECTION_NAME",
-            Group: "GROUP_TEST",
-            Host: "pg-2eec7806-manasa-dd8a.a.aivencloud.com",
-            Port: 22683,
-            MaintenanceDB: "voice-chat",
-            Username: "avnadmin",
-            SSLMode: "require",
-	    password:"AVNS_Vz0nNkXvfi5IWu8jjhd",
-           dbname   = "voice-chat",
+	    "Name": "CONNECTION_NAME",
+            "Group": "GROUP_TEST",
+            "Host": "pg-2eec7806-manasa-dd8a.a.aivencloud.com",
+            "Port": 22683,
+            "MaintenanceDB": "voice-chat",
+            "Username": "avnadmin",
+            "SSLMode": "require",
+	    "password":"AVNS_Vz0nNkXvfi5IWu8jjhd",
+           "dbname"   : "voice-chat",
     )
 
 
