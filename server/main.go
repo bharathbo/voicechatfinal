@@ -104,9 +104,9 @@ func main() {
             "Port": 22683,
             "MaintenanceDB": "voice-chat",
             "Username": "avnadmin",
-            "SSLMode": "require"
-	    "password":"AVNS_Vz0nNkXvfi5IWu8jjhd"
-             dbname   = "voice-chat"
+            "SSLMode": "require",
+	    "password":"AVNS_Vz0nNkXvfi5IWu8jjhd",
+             dbname   = "voice-chat",
     )
 
 
